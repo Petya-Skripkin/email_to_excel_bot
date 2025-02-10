@@ -1,10 +1,11 @@
 import imaplib
 import email
 import pandas as pd
-import time
 from email.header import decode_header
 import asyncio
+from email.utils import parsedate
 from config import EMAIL, PASSWORD, IMAP_SERVER, FOLDER, CHECK_INTERVAL
+from datetime import datetime, timedelta
 
 
 async def fetch_emails():
@@ -33,9 +34,29 @@ async def fetch_emails():
 
                     sender = msg.get("From", "")
                     body = extract_body(msg)
+                    
+                                        # Извлекаем дату из заголовков
+                    date = msg.get("Date")
+                    if date:
+                        # Парсим дату с использованием email.utils.parsedate
+                        parsed_date = parsedate(date)
+                        if parsed_date:
+                            # Преобразуем в datetime
+                            parsed_date = datetime(*parsed_date[:6])
+
+                            # Добавляем 5 часов (хардкод)
+                            parsed_date = parsed_date + timedelta(hours=5)
+
+                            # Преобразуем в строку
+                            date = parsed_date.strftime("%Y-%m-%d %H:%M:%S")
+                        else:
+                            date = "Не указана"
+                    else:
+                        date = "Не указана"
 
                     data = parse_email(body)
                     if data:
+                        data["date"] = date
                         data_list.append(data)
 
         mail.logout()
@@ -69,9 +90,9 @@ def extract_body(msg):
 def parse_email(body):
     """Парсит данные из тела письма"""
     data = {}
-    fields = ["message", "name", "company", "email", "theme"]
+    fields = ["name", "company", "theme", "email", "message"]
     lines = body.split("\n")
-    
+
     print("📩 Исходное тело письма:")
     print(body)  # Выведет тело письма для отладки
 
@@ -94,7 +115,7 @@ async def save_to_excel(data, filename="emails.xlsx"):
             df = pd.read_excel(filename)
         except FileNotFoundError:
             # Если файла нет, создаём новый DataFrame с нужными полями
-            df = pd.DataFrame(columns=["message", "name", "company", "email", "theme"])
+            df = pd.DataFrame(columns=["message", "name", "company", "email", "theme", "date"])
 
         # Добавляем новую строку с данными
         for entry in data:
