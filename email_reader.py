@@ -3,18 +3,16 @@ import email
 import pandas as pd
 import time
 from email.header import decode_header
+import asyncio
 from config import EMAIL, PASSWORD, IMAP_SERVER, FOLDER, CHECK_INTERVAL
 
 
-def fetch_emails():
+async def fetch_emails():
     """Получает новые письма из почтового ящика."""
     try:
         mail = imaplib.IMAP4_SSL(IMAP_SERVER, 993)
- #       mail.debug = 4
         mail.login(EMAIL, PASSWORD)
         mail.select(FOLDER)
-
-        print(123)
 
         _, messages = mail.search(None, "UNSEEN")  # Проверяем только новые (непрочитанные) письма
         messages = messages[0].split()
@@ -41,7 +39,7 @@ def fetch_emails():
                         data_list.append(data)
 
         mail.logout()
-        return data_list  
+        return data_list
 
     except imaplib.IMAP4.error as e:
         print(f"❌ Ошибка IMAP: {e}")
@@ -89,33 +87,39 @@ def parse_email(body):
 
 
 
-def save_to_excel(data_list):
-    """Сохраняет данные в Excel файл (дописывает в существующий)."""
-    if not data_list:
-        return
-
+async def save_to_excel(data, filename="emails.xlsx"):
     try:
-        existing_df = pd.read_excel("emails.xlsx")
-        df = pd.DataFrame(data_list)
-        df = pd.concat([existing_df, df], ignore_index=True)
-    except FileNotFoundError:
-        df = pd.DataFrame(data_list)
+        # Читаем существующий файл или создаём новый DataFrame с полями
+        try:
+            df = pd.read_excel(filename)
+        except FileNotFoundError:
+            # Если файла нет, создаём новый DataFrame с нужными полями
+            df = pd.DataFrame(columns=["message", "name", "company", "email", "theme"])
 
-    df.to_excel("emails.xlsx", index=False)
-    print(f"✅ Добавлено {len(data_list)} новых писем в emails.xlsx")
+        # Добавляем новую строку с данными
+        for entry in data:
+            df = pd.concat([df, pd.DataFrame([entry])], ignore_index=True)
+
+        # Сохраняем в файл
+        df.to_excel(filename, index=False)
+        print(f"✅ Данные успешно добавлены в {filename}")
+
+    except Exception as e:
+        print(f"❌ Ошибка при сохранении: {e}")
 
 
-def monitor_emails():
+async def monitor_emails():
     """Мониторинг новых писем с периодическим опросом."""
     print("📩 Мониторинг писем запущен...")
 
     while True:
-        new_emails = fetch_emails()
+        new_emails = await fetch_emails()  # Сделаем fetch_emails асинхронным
         
         if new_emails:
             print(f"📬 Найдено {len(new_emails)} новых писем!")
-            save_to_excel(new_emails)
+            await save_to_excel(new_emails)  # Сделаем save_to_excel асинхронным
         else:
             print("📭 Новых писем нет...")
 
-        time.sleep(CHECK_INTERVAL)  # Пауза перед следующим запросом
+        await asyncio.sleep(CHECK_INTERVAL)  # Пауза перед следующим запросом (асинхронно)
+
