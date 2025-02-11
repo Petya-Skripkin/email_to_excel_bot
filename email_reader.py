@@ -4,7 +4,7 @@ import pandas as pd
 from email.header import decode_header
 import asyncio
 from email.utils import parsedate
-from config import EMAIL, PASSWORD, IMAP_SERVER, FOLDER, CHECK_INTERVAL
+from config import EMAIL, PASSWORD, IMAP_SERVER, FOLDER, CHECK_INTERVAL, ALLOWED_SUBJECT
 from datetime import datetime, timedelta
 
 
@@ -31,6 +31,10 @@ async def fetch_emails():
                     subject, encoding = decode_header(msg["Subject"])[0]
                     if isinstance(subject, bytes):
                         subject = subject.decode(encoding or "utf-8")
+
+                    if subject.strip() != ALLOWED_SUBJECT:
+                        print("Пришло не то письмо")
+                        continue
 
                     sender = msg.get("From", "")
                     body = extract_body(msg)
