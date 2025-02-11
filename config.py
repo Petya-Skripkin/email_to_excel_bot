@@ -6,4 +6,4 @@ EXCEL_FILE = "emails.xlsx"
 ALLOWED_SUBJECT = "[IDC-Corporation] Форма Wix - кто-то заполнил форму"
 ALLOWED_SENDER = ""
 BOT_TOKEN = "7703399126:AAGXK8RrfQZ2Yth7CpzaJSZO97AQVsyW5ZY"
-CHECK_INTERVAL = 60
+CHECK_INTERVAL = 1800

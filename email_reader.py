@@ -56,7 +56,7 @@ async def fetch_emails():
 
                     data = parse_email(body)
                     if data:
-                        data["date"] = date
+                        data["Дата"] = date
                         data_list.append(data)
 
         mail.logout()
@@ -86,25 +86,31 @@ def extract_body(msg):
 
     return body.strip()
 
+# Колонка данных для xlsx
+columns = ["Имя", "Компания", "Тема", "Телефон", "Email", "Сообщение"]
 
 def parse_email(body):
     """Парсит данные из тела письма"""
     data = {}
-    fields = ["name", "company", "theme", "email", "message"]
+    fields = ["name", "company", "theme", "phone", "email", "message"]
     lines = body.split("\n")
 
     print("📩 Исходное тело письма:")
     print(body)  # Выведет тело письма для отладки
 
+    # Для каждого поля из fields находим соответствующую строку в теле письма
+    lines.append(lines.pop(0))
     for line in lines:
         if ":" in line:
             key, value = line.split(":", 1)
             key, value = key.strip(), value.strip()
             if key in fields:
-                data[key] = value
+                # Добавляем значение в словарь data с использованием правильного ключа из columns
+                index = fields.index(key)
+                data[columns[index]] = value
 
     print("📊 Распознанные данные:", data)  # Выведет, какие поля удалось распарсить
-    return {field: data.get(field, "") for field in fields}
+    return {field: data.get(field, "") for field in columns}
 
 
 
@@ -115,7 +121,8 @@ async def save_to_excel(data, filename="emails.xlsx"):
             df = pd.read_excel(filename)
         except FileNotFoundError:
             # Если файла нет, создаём новый DataFrame с нужными полями
-            df = pd.DataFrame(columns=["message", "name", "company", "email", "theme", "date"])
+            # columns[0], columns[-1] = columns[-1], columns[0]
+            df = pd.DataFrame(columns=columns)
 
         # Добавляем новую строку с данными
         for entry in data:
